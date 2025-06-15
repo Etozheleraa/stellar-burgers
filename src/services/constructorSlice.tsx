@@ -1,57 +1,53 @@
-import { createSlice, nanoid, PayloadAction } from '@reduxjs/toolkit';
-import { TConstructorIngredient, TIngredient } from '@utils-types';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { nanoid } from 'nanoid';
+import type { TConstructorIngredient, TIngredient } from '@utils-types';
 
-interface ConstructorState {
-  ingredients: TConstructorIngredient[];
+export type ConstructorState = {
   bun: TConstructorIngredient | null;
-}
-
-const initialState: ConstructorState = {
-  ingredients: [],
-  bun: null
+  ingredients: TConstructorIngredient[];
 };
 
-interface SwapPayload {
-  from: number;
-  to: number;
-}
+const initialState: ConstructorState = {
+  bun: null,
+  ingredients: []
+};
 
 export const burgerConstructorSlice = createSlice({
   name: 'burgerConstructor',
   initialState,
   reducers: {
-    addIngredient: {
-      reducer: (state, { payload }: PayloadAction<TConstructorIngredient>) => {
-        payload.type === 'bun' 
-          ? state.bun = payload 
-          : state.ingredients.push(payload);
-      },
-      prepare: (ingredient: TIngredient) => ({
-        payload: { ...ingredient, id: nanoid() }
-      })
+    addIngredient: (state, action: PayloadAction<TIngredient>) => {
+      const ingredient = action.payload;
+      const ingredientWithId = { ...ingredient, id: nanoid() };
+
+      if (ingredient.type === 'bun') {
+        state.bun = ingredientWithId;
+      } else {
+        state.ingredients.push(ingredientWithId);
+      }
     },
-    swapIngredient: {
-      reducer: (state, { payload }: PayloadAction<SwapPayload>) => {
-        [state.ingredients[payload.from], state.ingredients[payload.to]] = 
-          [state.ingredients[payload.to], state.ingredients[payload.from]];
-      },
-      prepare: (from: number, to: number) => ({
-        payload: { from, to }
-      })
+    removeIngredient: (state, action: PayloadAction<string>) => {
+      state.ingredients = state.ingredients.filter(
+        (item) => item.id !== action.payload
+      );
     },
-    removeIngredient: (state, { payload }: PayloadAction<string>) => {
-      state.ingredients = state.ingredients.filter(item => item.id !== payload);
+    swapIngredient: (state, action: PayloadAction<[number, number]>) => {
+      const [fromIndex, toIndex] = action.payload;
+      const items = [...state.ingredients];
+      const [removed] = items.splice(fromIndex, 1);
+      items.splice(toIndex, 0, removed);
+      state.ingredients = items;
     },
     resetConstructor: (state) => {
-      state.ingredients = [];
       state.bun = null;
+      state.ingredients = [];
     }
-  },
-  selectors: {
-    getFillings: (state) => state.ingredients,
-    getSelectedBun: (state) => state.bun,
-    getConstructorState: (state) => state
   }
 });
 
-export const { actions: burgerConstructorActions, selectors: burgerConstructorSelectors } = burgerConstructorSlice;
+export const burgerConstructorActions = burgerConstructorSlice.actions;
+
+export const burgerConstructorSelectors = {
+  getConstructorState: (state: { burgerConstructor: ConstructorState }) =>
+    state.burgerConstructor
+};
